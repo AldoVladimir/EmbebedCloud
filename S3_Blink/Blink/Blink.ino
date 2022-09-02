@@ -1,8 +1,7 @@
-const int LED_PIN = 34;
+const int LED_PIN = 32;
 
 void setup() {
   pinMode(LED_PIN,OUTPUT);
-  Serial.begin(115200);
 }
 
 void loop() {
