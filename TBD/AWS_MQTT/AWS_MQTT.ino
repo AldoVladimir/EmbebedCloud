@@ -5,19 +5,20 @@
  Todos los derechos reservados.
 */
 
-//Añadir librerías
+//Añadir bibliotecas
 #include "SPIFFS.h"
 #include <WiFiClientSecure.h>
-#include <Wire.h>
 #include <PubSubClient.h>
-#include <DHT.h>                
+#include <Adafruit_BMP280.h>
+
+#include <Credentials.h>
 
 //Credenciales de red Wifi
-const char* ssid = "Nombre de red";
-const char* password = "Contraseña"; 
+const char* ssid = SSID;
+const char* password = PASSWORD; 
 
 //Servidor MQTT
-const char* mqtt_server = "servidor.amazonaws.com";
+const char* mqtt_server = AWS_MQTT_SERVER;
 const int mqtt_port = 8883;
 
 String Read_rootca;
@@ -26,7 +27,7 @@ String Read_privatekey;
 //********************************
 #define BUFFER_LEN  256
 long lastMsg = 0;
-char msg[BUFFER_LEN];
+char payload[BUFFER_LEN]; //Datos a escribir en SD y serial
 int value = 0;
 byte mac[6];
 char mac_Id[18];
@@ -37,9 +38,9 @@ int count = 1;
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-//Configuración de DHTXX
-#define DHTPIN 19 //Pin
-DHT dht(DHTPIN, DHT11); //Modelo
+//Configuración de BME y LED
+#define PIN_LED 32
+Adafruit_BMP280 bmp;
 
 //Conectar a red Wifi
 void setup_wifi() {
@@ -108,11 +109,11 @@ void reconnect() {
 void setup() {
   
   Serial.begin(115200);
-  dht.begin();
+  bmp.begin(0x76); //Inicializar comunicación I2C con el sensor barométrico 
   Serial.setDebugOutput(true);
   
   // Inicializa con el PIN led2.
-  pinMode(2, OUTPUT);
+  pinMode(PIN_LED, OUTPUT);
   setup_wifi();
   delay(1000);
   
@@ -135,7 +136,7 @@ void setup() {
   }
   //*****************************
   // Cert leer archivo
-  File file4 = SPIFFS.open("/e349f5eb7e-certificate.pem.crt", "r");
+  File file4 = SPIFFS.open("/615f-certificate.pem.crt", "r");
   if (!file4) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
@@ -147,7 +148,7 @@ void setup() {
   }
   //***************************************
   //Privatekey leer archivo
-  File file6 = SPIFFS.open("/e349f5eb7e-private.pem.key", "r");
+  File file6 = SPIFFS.open("/615f-private.pem.key", "r");
   if (!file6) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
@@ -206,12 +207,12 @@ void setup() {
 
 void loop() {
 
-  // ******************** SENSOR DHTxx *********************************
-  float h = dht.readHumidity();         // Lectura de Temperatura
-  float t = dht.readTemperature();      // Lectura de humedad
+  // ******************** SENSOR BMPx80 *********************************
+  float h = bmp.readPressure();         // Lectura de presion
+  float t = bmp.readTemperature();      // Lectura de humedad
   if (isnan(h) || isnan(t))
   {
-    Serial.println("¡Error al leer del sensor DHT!");
+    Serial.println("¡Error al leer del sensor BMP!");
     return;
   }
 
@@ -227,11 +228,11 @@ void loop() {
     String macIdStr = mac_Id;
     String Temprature = String(t);
     String Humidity = String(h);
-    snprintf (msg, BUFFER_LEN, "{\"mac_Id\" : \"%s\", \"Temperatura\" : %s, \"Humedad\" : %s}", macIdStr.c_str(), Temprature.c_str(), Humidity.c_str());
+    snprintf (payload, BUFFER_LEN, "{\"mac_Id\" : \"%s\", \"Temperatura\" : %s, \"Humedad\" : %s}", macIdStr.c_str(), Temprature.c_str(), Humidity.c_str());
     Serial.print("Publicando mensaje: ");
     Serial.print(count);
-    Serial.println(msg);
-    client.publish("sensor", msg);
+    Serial.println(payload);
+    client.publish("$aws/things/Spiffs_test", payload);
     count = count + 1;
     //================================================================================================
   }
