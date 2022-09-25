@@ -1,0 +1,4 @@
+{
+  "origen" : "archivo_SPIFFS",
+  "message" : "Los queremos mucho"
+}
