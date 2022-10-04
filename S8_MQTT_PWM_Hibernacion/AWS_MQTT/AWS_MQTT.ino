@@ -35,10 +35,10 @@ char payload[BUFFER_LEN]; //Datos a enviar por MQTT
 byte mac[6];
 char mac_Id[18];
 
-#define JSON_BUFFER_INCOMING_LEN 400
-#define JSON_BUFFER_OUTGOING_LEN 400
-DynamicJsonDocument payload_in(JSON_BUFFER_INCOMING_LEN);
-DynamicJsonDocument payload_out(JSON_BUFFER_OUTGOING_LEN);
+#define JSON_BUFFER_INCOMING_LEN 120
+#define JSON_BUFFER_OUTGOING_LEN 120
+StaticJsonDocument<JSON_BUFFER_INCOMING_LEN> payload_in;
+StaticJsonDocument<JSON_BUFFER_OUTGOING_LEN> payload_out;
 //********************************
 
 //Configuración de cliente MQTT
@@ -78,6 +78,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   deserializeJson(payload_in, payload);
   const char* message = payload_in["message"];
   Serial.println(message);
+  payload_in.clear();
 }
 
 //Conectar a broker MQTT
@@ -130,10 +131,8 @@ void setup() {
     return;
   }
   Serial.println("Leido Root CA File");
-  //Serial.println("Root CA File Content:");
   while (file2.available()) {
     Read_rootca = file2.readString();
-    //Serial.println(Read_rootca);
     }
     
   //*****************************
@@ -144,10 +143,8 @@ void setup() {
     return;
   }
   Serial.println("Leido Cert File");
-  //Serial.println("Cert File Content:");
   while (file4.available()) {
     Read_cert = file4.readString();
-    //Serial.println(Read_cert);
     }
     
   //***************************************
@@ -158,10 +155,8 @@ void setup() {
     return;
   }
   Serial.println("Leido privateKey");
-  //Serial.println("privateKey contenido:");
   while (file6.available()) {
     Read_privatekey = file6.readString();
-    //Serial.println(Read_privatekey);
     }
   
   //=====================================================
@@ -208,20 +203,11 @@ void loop() {
   if (now - lastMsg > 5000) {
     lastMsg = now;
     //=============================================================================================    
-    /*snprintf(payload,BUFFER_LEN,
-                      "{\"mac_Id\" : \"%s\","
-                      "\"device_Id\" : \"%s\","
-                      "\"temp_C\" : \"%.2f\"," 
-                      "\"press_hPa\" : \"%.2f\"}", 
-                      mac_Id,
-                      clientId,                      
-                      bmp.readTemperature(),
-                      bmp.readPressure()/100);*/
     //Json Serializer
     payload_out["mac_Id"] = mac_Id;
     payload_out["device_Id"] = clientId;
-    payload_out["temp_C"] = serialized(String((double)bmp.readTemperature(),2));
-    payload_out["press_hPa"] = serialized(String((double)bmp.readPressure()/100,2));
+    payload_out["temp_C"] = serialized(String(bmp.readTemperature(),2));
+    payload_out["press_hPa"] = serialized(String(bmp.readPressure()/100,2));
 
     serializeJson(payload_out, payload);
         
@@ -229,6 +215,7 @@ void loop() {
     Serial.println(payload);
 
     client.publish(PUBLISH_TOPIC, payload);
+    payload_out.clear();
     //================================================================================================
   }
                       
