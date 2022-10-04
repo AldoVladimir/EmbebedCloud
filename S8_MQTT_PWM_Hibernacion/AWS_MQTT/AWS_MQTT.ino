@@ -220,8 +220,8 @@ void loop() {
     //Json Serializer
     payload_out["mac_Id"] = mac_Id;
     payload_out["device_Id"] = clientId;
-    payload_out["temp_C"] = serialized(String(bmp.readTemperature(),2));
-    payload_out["press_hPa"] = serialized(String(bmp.readPressure()/100,2));
+    payload_out["temp_C"] = serialized(String((double)bmp.readTemperature(),2));
+    payload_out["press_hPa"] = serialized(String((double)bmp.readPressure()/100,2));
 
     serializeJson(payload_out, payload);
         
