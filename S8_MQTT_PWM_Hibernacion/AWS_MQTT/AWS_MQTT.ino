@@ -22,8 +22,8 @@ const char* password = PASSWORD;
 const char* mqtt_server = AWS_MQTT_SERVER;
 const int mqtt_port = 8883;
 String clientId = "Axolote_";
-const char* PUBLISH_TOPIC = "";
-const char* SUBSCRIBE_TOPIC = "";
+const char* PUBLISH_TOPIC = "embebed_cloud/Axolote/test_topic_pub";
+const char* SUBSCRIBE_TOPIC = "embebed_cloud/Axolote/test_topic_sub";
 
 String Read_rootca;
 String Read_cert;
@@ -35,8 +35,8 @@ char payload[BUFFER_LEN]; //Datos a enviar por MQTT
 byte mac[6];
 char mac_Id[18];
 
-#define JSON_BUFFER_INCOMING_LEN 60
-#define JSON_BUFFER_OUTGOING_LEN 200
+#define JSON_BUFFER_INCOMING_LEN 400
+#define JSON_BUFFER_OUTGOING_LEN 400
 DynamicJsonDocument payload_in(JSON_BUFFER_INCOMING_LEN);
 DynamicJsonDocument payload_out(JSON_BUFFER_OUTGOING_LEN);
 //********************************
@@ -138,7 +138,7 @@ void setup() {
     
   //*****************************
   // Cert leer archivo
-  File file4 = SPIFFS.open("/certificate.pem.crt", FILE_READ);
+  File file4 = SPIFFS.open("/692c-certificate.pem.crt", FILE_READ);
   if (!file4) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
@@ -152,7 +152,7 @@ void setup() {
     
   //***************************************
   //Privatekey leer archivo
-  File file6 = SPIFFS.open("/private.pem.key", FILE_READ);
+  File file6 = SPIFFS.open("/692c-private.pem.key", FILE_READ);
   if (!file6) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
