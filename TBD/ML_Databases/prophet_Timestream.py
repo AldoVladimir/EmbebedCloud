@@ -8,20 +8,19 @@ Created on Sat Oct  8 17:53:06 2022
 
 # %% Importar bibliotecas
 import awswrangler as wr
-import boto3 
-#import numpy as np
+#import boto3 
 import pandas as pd
 from prophet import Prophet
-#import matplotlib.pyplot as plt
+from datetime import datetime,timedelta
 
 # %% Consultar fuentes en Amazon
 
 #Timestream
 query = 'SELECT * FROM "IoT_Digitalizacion"."Atmosfera_Albert_CDMX" '\
-        'where time between now()-30day and now()'
+        'where time between now()-6month and now()'
 df = wr.timestream.query(query)
 
-# %% Preprocesamient
+# %% Preprocesamiento
 #La consulta de timestream está en formato 'wide'
 #Hay que cambiarla a formato 'Long'
 df = df.pivot(index='time', 
@@ -39,21 +38,28 @@ cols=[i for i in df.columns if i not in ["date-time","time"]] #A numerico
 for col in cols:
     df[col]=pd.to_numeric(df[col])
     
+df.set_index("date-time", drop=True)
 # %% Previsualizar
-variable = "hum_perc"
 
-df.plot(y = variable, x = "date-time" )
+variable = "pres_hPa"
 
-df_rolling = df.rolling(120).mean()
+#Subsetting para tener información manejable
+#Resampling para tener una frecuencia de discretización constante
+#Rolling para eliminar transiciones de alta frecuencia
+df_subset = df[df.index>(datetime.today()-timedelta(days = 31))]
+df_resamp = df_subset.resample('10min').mean().interpolate()
+df_rolling = df_resamp.rolling(3).mean()
+
+df_subset .plot(y = variable, use_index = True)
+df_resamp.plot(y = variable, use_index = True)
 df_rolling.plot(y = variable, use_index=True )
-# %%Prophet fig
+# %%Prophet fit
 df_prophet = pd.DataFrame()
-df_prophet["y"] =df_rolling[variable]
-df_prophet["ds"] =df.index.tz_localize(None)
+df_prophet["y"] = df_rolling[variable]
+df_prophet["ds"] = df_rolling.index.tz_localize(None)
 
-
-m = Prophet(changepoint_prior_scale=0.01).fit(df_prophet)
+m = Prophet(changepoint_prior_scale=0.001).fit(df_prophet)
 # %% Prophet predictions
-future = m.make_future_dataframe(periods=24, freq='H')
+future = m.make_future_dataframe(periods=12, freq='H')
 fcst = m.predict(future)
 fig = m.plot(fcst)
