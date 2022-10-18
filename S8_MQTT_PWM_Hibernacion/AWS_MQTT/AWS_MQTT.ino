@@ -35,8 +35,8 @@ char payload[BUFFER_LEN]; //Datos a enviar por MQTT
 byte mac[6];
 char mac_Id[18];
 
-#define JSON_BUFFER_INCOMING_LEN 120
-#define JSON_BUFFER_OUTGOING_LEN 120
+#define JSON_BUFFER_INCOMING_LEN 200
+#define JSON_BUFFER_OUTGOING_LEN 200
 StaticJsonDocument<JSON_BUFFER_INCOMING_LEN> payload_in;
 StaticJsonDocument<JSON_BUFFER_OUTGOING_LEN> payload_out;
 //********************************
@@ -47,6 +47,7 @@ PubSubClient client(espClient);
 
 //Configuración de BME y LED
 #define PIN_LED 32
+#define PIN_LDR 34
 Adafruit_BMP280 bmp;
 
 //Conectar a red Wifi
@@ -206,11 +207,15 @@ void loop() {
     //Json Serializer
     float temperature = bmp.readTemperature();
     float pressure = bmp.readPressure();
+    float light = analogRead(PIN_LDR);
+
     
     payload_out["mac_Id"] = mac_Id;
     payload_out["device_Id"] = clientId;
     payload_out["temp_C"] = serialized(String(temperature,2));
     payload_out["press_hPa"] = serialized(String(pressure/100,2));
+    payload_out["ligh_adim"] = serialized(String(light,2));
+
 
     serializeJson(payload_out, payload);
         
