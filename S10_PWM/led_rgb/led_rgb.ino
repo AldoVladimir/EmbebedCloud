@@ -7,7 +7,7 @@ int led_status = 0;
 
 //debouncing
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 100; //delay para debouncing en ms
+unsigned long debounceDelay = 200; //delay para debouncing en ms
 
 //Al presionar un botón, cambia el color del led
 void IRAM_ATTR isr_button(){
@@ -22,11 +22,10 @@ void IRAM_ATTR isr_button(){
   }
 }
 
-
 void setup() {  
   //Boton de interrupción
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
-  attachInterrupt(PIN_BUTTON, isr_button, FALLING);
+  pinMode(PIN_BUTTON, INPUT);
+  attachInterrupt(PIN_BUTTON, isr_button, RISING);
 
   //Canales LED 
   pinMode(LED_R,OUTPUT);

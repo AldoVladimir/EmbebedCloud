@@ -24,14 +24,12 @@ String clientId = "Axolote_";
 const char * PUB_TOPIC = "$aws/things/Axolote_Aldo/shadow/update";
 const char * SUB_TOPIC = "$aws/things/Axolote_Aldo/shadow/update/delta";
 
-
 String Read_rootca;
 String Read_cert;
 String Read_privatekey;
 //********************************
 #define BUFFER_LEN  256
 int current_message_version = 0;
-
 
 #define JSON_BUFFER_INCOMING_LEN 400
 #define JSON_BUFFER_OUTGOING_LEN 400
