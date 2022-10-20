@@ -11,14 +11,9 @@ unsigned long debounceDelay = 200; //delay para debouncing en ms
 
 //Al presionar un botón, cambia el color del led
 void IRAM_ATTR isr_button(){
-
   if ((millis() - lastDebounceTime) > debounceDelay){
-    led_status++;
-  
-    if (led_status >= 7){
-      led_status = 0;
-    }
-    lastDebounceTime = millis();
+     led_status++; if (led_status >= 7){led_status = 0;}
+     lastDebounceTime = millis();
   }
 }
 
@@ -40,39 +35,38 @@ void loop() {
   //Menú de colores
   switch (led_status) {
         case 1: //red
-            digitalWrite(LED_R,LOW);
-            digitalWrite(LED_G,HIGH);
-            digitalWrite(LED_B,HIGH); 
+          digitalWrite(LED_R,LOW);
+          digitalWrite(LED_G,HIGH);
+          digitalWrite(LED_B,HIGH); 
           break;
         case 2: //green
-            digitalWrite(LED_R,HIGH);
-            digitalWrite(LED_G,LOW);
-            digitalWrite(LED_B,HIGH); 
+          digitalWrite(LED_R,HIGH);
+          digitalWrite(LED_G,LOW);
+          digitalWrite(LED_B,HIGH); 
           break;
         case 3: //blue
-            digitalWrite(LED_R,HIGH);
-            digitalWrite(LED_G,HIGH);
-            digitalWrite(LED_B,LOW); 
+          digitalWrite(LED_R,HIGH);
+          digitalWrite(LED_G,HIGH);
+          digitalWrite(LED_B,LOW); 
           break;
         case 4: //cyan
-            digitalWrite(LED_R,HIGH);
-            digitalWrite(LED_G,LOW);
-            digitalWrite(LED_B,LOW); 
+          digitalWrite(LED_R,HIGH);
+          digitalWrite(LED_G,LOW);
+          digitalWrite(LED_B,LOW); 
           break;          
         case 5: //yellow
-            digitalWrite(LED_R,LOW);
-            digitalWrite(LED_G,LOW);
-            digitalWrite(LED_B,HIGH); 
+          digitalWrite(LED_R,LOW);
+          digitalWrite(LED_G,LOW);
+          digitalWrite(LED_B,HIGH); 
           break;
         case 6: //magenta
-            digitalWrite(LED_R,LOW);
-            digitalWrite(LED_G,HIGH);
-            digitalWrite(LED_B,LOW); 
+          digitalWrite(LED_R,LOW);
+          digitalWrite(LED_G,HIGH);
+          digitalWrite(LED_B,LOW); 
           break;         
         default: //off
-            digitalWrite(LED_R,HIGH);
-            digitalWrite(LED_G,HIGH);
-            digitalWrite(LED_B,HIGH); 
+          digitalWrite(LED_R,HIGH);
+          digitalWrite(LED_G,HIGH);
+          digitalWrite(LED_B,HIGH); 
       }
-
 }
