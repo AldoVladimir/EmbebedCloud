@@ -21,8 +21,9 @@ const char* password = PASSWORD;
 const char* mqtt_server = AWS_MQTT_SERVER;
 const int mqtt_port = 8883;
 String clientId = "Axolote_";
-const char * PUB_TOPIC = "$aws/things/Axolote_Aldo/shadow/update";
-const char * SUB_TOPIC = "$aws/things/Axolote_Aldo/shadow/update/delta";
+String PUB_TOPIC = "$aws/things/";
+String SUB_TOPIC = "$aws/things/";
+
 
 String Read_rootca;
 String Read_cert;
@@ -133,7 +134,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   serializeJson(report_status, report);   
   Serial.println("Current status");
   serializeJson(report_status, Serial);  
-  client.publish(PUB_TOPIC, report); 
+  client.publish(PUB_TOPIC.c_str(), report); 
       
   }  
 }
@@ -150,7 +151,7 @@ void reconnect() {
       Serial.println("conectada");      
    
     // ... y suscribiendo
-      client.subscribe(SUB_TOPIC);
+      client.subscribe(SUB_TOPIC.c_str());
       
     } else {
       Serial.print("failed, rc=");
@@ -176,6 +177,9 @@ void setup() {
   setup_wifi();
   delay(1000);
   clientId += AXOLOTE_ID;
+  PUB_TOPIC += clientId+"/shadow/update";
+  SUB_TOPIC += clientId+"/shadow/update/delta";
+
   
   //****************
   if (!SPIFFS.begin(true)) {
@@ -258,7 +262,7 @@ void setup() {
   serializeJson(report_status, payload);
   serializeJson(report_status, Serial);
   delay(1000);
-  client.publish(PUB_TOPIC, payload);
+  client.publish(PUB_TOPIC.c_str(), payload);
 }
 
 
