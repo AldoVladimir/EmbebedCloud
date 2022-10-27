@@ -7,12 +7,12 @@ int led_status = 0;
 
 //debouncing
 unsigned long lastDebounceTime = 0;
-unsigned long debounceDelay = 200; //delay para debouncing en ms
+unsigned long debounceDelay = 300; //delay para debouncing en ms
 
 //Al presionar un botón, cambia el color del led
 void IRAM_ATTR isr_button(){
   if ((millis() - lastDebounceTime) > debounceDelay){
-     led_status++; if (led_status >= 7){led_status = 0;}
+     led_status++; if (led_status >= 8){led_status = 0;}
      lastDebounceTime = millis();
   }
 }
@@ -63,7 +63,12 @@ void loop() {
           digitalWrite(LED_R,LOW);
           digitalWrite(LED_G,HIGH);
           digitalWrite(LED_B,LOW); 
-          break;         
+          break;
+        case 7: //white
+          digitalWrite(LED_R,LOW);
+          digitalWrite(LED_G,LOW);
+          digitalWrite(LED_B,LOW); 
+          break;                    
         default: //off
           digitalWrite(LED_R,HIGH);
           digitalWrite(LED_G,HIGH);

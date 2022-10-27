@@ -4,13 +4,11 @@
  Colaboración: Néstor Ccencho
  Todos los derechos reservados.
 */
-
 //Añadir bibliotecas
 #include "SPIFFS.h"
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-
 #include <Credentials.h>
 
 //Credenciales de red Wifi
@@ -23,7 +21,7 @@ const int mqtt_port = 8883;
 String clientId = "Axolote_";
 String PUB_TOPIC = "$aws/things/";
 String SUB_TOPIC = "$aws/things/";
-
+const char* BUTTON_TOPIC = "embebed_cloud/Axolote/rgb";
 
 String Read_rootca;
 String Read_cert;
@@ -32,20 +30,41 @@ String Read_privatekey;
 #define BUFFER_LEN  256
 int current_message_version = 0;
 
-#define JSON_BUFFER_INCOMING_LEN 400
-#define JSON_BUFFER_OUTGOING_LEN 400
-DynamicJsonDocument in_status(JSON_BUFFER_INCOMING_LEN);
-DynamicJsonDocument report_status(JSON_BUFFER_OUTGOING_LEN);
+#define JSON_BUFFER 400
+DynamicJsonDocument in_status(JSON_BUFFER);
+DynamicJsonDocument report_status(JSON_BUFFER);
+DynamicJsonDocument desired_status(JSON_BUFFER);
 //********************************
+
+//debouncing
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 250; //delay para debouncing en ms
 
 //Configuración de cliente MQTT
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-//Configuración de LED
+//Configuración de LED y boton
 #define LED_R 14
 #define LED_G 27
 #define LED_B 12
+#define PIN_BUTTON 33
+
+//Color LED
+int led_status = 0;
+bool button_pressed = 0;
+
+//Al presionar un botón, cambia el color del led
+void IRAM_ATTR isr_button(){
+  if ((millis() - lastDebounceTime) > debounceDelay){
+     led_status++; if (led_status >= 8){led_status = 0;}
+     
+     button_pressed = 1;
+
+     lastDebounceTime = millis();
+  }
+}
+
 
 //Conectar a red Wifi
 void setup_wifi() {
@@ -119,6 +138,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
             digitalWrite(LED_R,LOW);
             digitalWrite(LED_G,HIGH);
             digitalWrite(LED_B,LOW); 
+          break;
+        case 7: //white
+            digitalWrite(LED_R,LOW);
+            digitalWrite(LED_G,LOW);
+            digitalWrite(LED_B,LOW); 
           break;         
         default: //off
             digitalWrite(LED_R,HIGH);
@@ -126,7 +150,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
             digitalWrite(LED_B,HIGH); 
       }
   
-  //Publicar el estado actual
+  //Publicar el estado inicial
   
   report_status["state"]["reported"]["status"] = led_status;
   
@@ -138,6 +162,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
       
   }  
 }
+
 
 //Conectar a broker MQTT
 void reconnect() {
@@ -168,6 +193,10 @@ void setup() {
   
   Serial.begin(115200);
   Serial.setDebugOutput(true);
+
+  //Boton de interrupción
+  pinMode(PIN_BUTTON, INPUT);
+  attachInterrupt(PIN_BUTTON, isr_button, RISING);
   
   // Inicializa con el PIN led2.
   pinMode(LED_R, OUTPUT);
@@ -177,8 +206,8 @@ void setup() {
   setup_wifi();
   delay(1000);
   clientId += AXOLOTE_ID;
-  PUB_TOPIC += clientId + "/shadow/update";
-  SUB_TOPIC += clientId + "/shadow/update/delta";
+  PUB_TOPIC += clientId+"/shadow/update";
+  SUB_TOPIC += clientId+"/shadow/update/delta";
 
   
   //****************
@@ -270,5 +299,14 @@ void loop() {
   if (!client.connected()) {
     reconnect();
   }
-  client.loop();                      
+  client.loop(); 
+
+  if(button_pressed){
+    desired_status["state"]["desired"]["status"] = led_status;
+    char payload[BUFFER_LEN]; 
+    serializeJson(desired_status, payload);
+    client.publish(BUTTON_TOPIC, payload);
+    button_pressed = 0;    
+  }
+                       
 }
