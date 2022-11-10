@@ -2,3 +2,4 @@ TBD/AWS_MQTT/data/*
 prueba_gitignore/*.crt
 S11_Boton_IoT/AWS_MQTT_Shadow/data/*
 S11_Boton_IoT/AWS_MQTT_Shadow_button/data/*
+S12_Relevador_IoT/relay_iot/data/*
