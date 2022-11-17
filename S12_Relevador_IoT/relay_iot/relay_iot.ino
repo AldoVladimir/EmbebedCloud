@@ -4,14 +4,11 @@
  Colaboración: Néstor Ccencho
  Todos los derechos reservados.
 */
-
 //Añadir bibliotecas
 #include "SPIFFS.h"
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
-#include <Adafruit_BMP280.h>
 #include <ArduinoJson.h>
-
 #include <Credentials.h>
 
 //Credenciales de red Wifi
@@ -22,33 +19,46 @@ const char* password = PASSWORD;
 const char* mqtt_server = AWS_MQTT_SERVER;
 const int mqtt_port = 8883;
 String clientId = "Axolote_";
-const char* PUBLISH_TOPIC = "embebed_cloud/Axolote/test_topic_pub";
-const char* SUBSCRIBE_TOPIC = "embebed_cloud/Axolote/test_topic_sub";
+String PUB_TOPIC = "$aws/things/";
+String SUB_TOPIC = "$aws/things/";
+const char* BUTTON_TOPIC = "embebed_cloud/Axolote/relay";
 
 String Read_rootca;
 String Read_cert;
 String Read_privatekey;
 //********************************
 #define BUFFER_LEN  256
-long lastMsg = 0;
-char payload[BUFFER_LEN]; //Datos a enviar por MQTT
-byte mac[6];
-char mac_Id[18];
+int current_message_version = 0;
 
-#define JSON_BUFFER_INCOMING_LEN 200
-#define JSON_BUFFER_OUTGOING_LEN 200
-StaticJsonDocument<JSON_BUFFER_INCOMING_LEN> payload_in;
-StaticJsonDocument<JSON_BUFFER_OUTGOING_LEN> payload_out;
+#define JSON_BUFFER 400
+DynamicJsonDocument in_status(JSON_BUFFER);
+DynamicJsonDocument report_status(JSON_BUFFER);
+DynamicJsonDocument desired_status(JSON_BUFFER);
 //********************************
+
+//debouncing
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 250; //delay para debouncing en ms
 
 //Configuración de cliente MQTT
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-//Configuración de BME y LED
-#define PIN_LED 32
-#define PIN_LDR 34
-Adafruit_BMP280 bmp;
+//Configuración de LED y boton
+#define RELAY 15
+#define PIN_BUTTON 33
+
+//Color LED
+bool relay_status = 0;
+bool button_pressed = 0;
+
+//Al presionar un botón, cambia el color del led
+void IRAM_ATTR isr_button(){
+  if ((millis() - lastDebounceTime) > debounceDelay){
+     relay_status = !relay_status; 
+     lastDebounceTime = millis();
+  }
+}
 
 //Conectar a red Wifi
 void setup_wifi() {
@@ -76,11 +86,36 @@ void setup_wifi() {
 void callback(char* topic, byte* payload, unsigned int length) {
 
   //Json parser deserializer
-  deserializeJson(payload_in, payload);
-  const char* message = payload_in["message"];
-  Serial.println(message);
-  payload_in.clear();
+  deserializeJson(in_status, payload);
+  serializeJson(in_status, Serial);
+  
+  int incoming_message_version = in_status["version"];
+  Serial.print("current version = ");
+  Serial.println(current_message_version);
+  Serial.print("incoming version = ");
+  Serial.println(incoming_message_version);
+
+
+  //Si la versión del cambio es más reciente,
+  //Cambiar el led RGB al color que se indica
+  if(incoming_message_version > current_message_version){
+    current_message_version = incoming_message_version;
+    bool relay_status = in_status["state"]["status"];
+    
+    if(relay_status){digitalWrite(RELAY,HIGH);}
+    else{digitalWrite(RELAY,LOW);}
+  
+    //Publicar el estado actual  
+    report_status["state"]["reported"]["status"] = relay_status;
+  
+    char report[BUFFER_LEN];
+    serializeJson(report_status, report);   
+    Serial.println("Current status");
+    serializeJson(report_status, Serial);  
+    client.publish(PUB_TOPIC.c_str(), report);      
+  }  
 }
+
 
 //Conectar a broker MQTT
 void reconnect() {
@@ -94,7 +129,7 @@ void reconnect() {
       Serial.println("conectada");      
    
     // ... y suscribiendo
-      client.subscribe(SUBSCRIBE_TOPIC);
+      client.subscribe(SUB_TOPIC.c_str());
       
     } else {
       Serial.print("failed, rc=");
@@ -103,8 +138,6 @@ void reconnect() {
       
       // Tiempo muerto de 5 segundos
       delay(5000);
-      //Reiniciar porque rara vez se recuperan
-      ESP.restart();
     }
   }
 }
@@ -112,14 +145,21 @@ void reconnect() {
 void setup() {
   
   Serial.begin(115200);
-  bmp.begin(0x76); //Inicializar comunicación I2C con el sensor barométrico 
   Serial.setDebugOutput(true);
+
+  //Boton de interrupción
+  pinMode(PIN_BUTTON, INPUT);
+  attachInterrupt(PIN_BUTTON, isr_button, RISING);
   
-  // Inicializa con el PIN led2.
-  pinMode(PIN_LED, OUTPUT);
+  //Relay
+  pinMode(RELAY,OUTPUT);
+  
   setup_wifi();
   delay(1000);
   clientId += AXOLOTE_ID;
+  PUB_TOPIC += clientId+"/shadow/update";
+  SUB_TOPIC += clientId+"/shadow/update/delta";
+
   
   //****************
   if (!SPIFFS.begin(true)) {
@@ -140,7 +180,7 @@ void setup() {
     
   //*****************************
   // Cert leer archivo
-  File file4 = SPIFFS.open("/c480-certificate.pem.crt", FILE_READ);
+  File file4 = SPIFFS.open("/615f-certificate.pem.crt", FILE_READ);
   if (!file4) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
@@ -152,7 +192,7 @@ void setup() {
     
   //***************************************
   //Privatekey leer archivo
-  File file6 = SPIFFS.open("/c480-private.pem.key", FILE_READ);
+  File file6 = SPIFFS.open("/615f-private.pem.key", FILE_READ);
   if (!file6) {
     Serial.println("No se pudo abrir el archivo para leerlo");
     return;
@@ -176,57 +216,46 @@ void setup() {
   pRead_privatekey = (char *)malloc(sizeof(char) * (Read_privatekey.length() + 1));
   strcpy(pRead_privatekey, Read_privatekey.c_str());
   
- 
+  
   espClient.setCACert(pRead_rootca);
   espClient.setCertificate(pRead_cert);
   espClient.setPrivateKey(pRead_privatekey);
 
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
-
-  //******************************************
-  WiFi.macAddress(mac);
-  snprintf(mac_Id, sizeof(mac_Id), "%02x:%02x:%02x:%02x:%02x:%02x",
-           mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  //Serial.println(mac_Id);
-  //****************************************
+  
   delay(2000);
- 
+
+  //Configuración inicial: Todo apagado.
+  //Publica el primer estado por mqtt
+
+  if (!client.connected()) {
+    reconnect();
+  }  
+  //Json Serializer  
+  digitalWrite(RELAY,LOW);
+  
+  report_status["state"]["reported"]["status"] = 0;
+  char payload[BUFFER_LEN]; 
+  serializeJson(report_status, payload);
+  serializeJson(report_status, Serial);
+  delay(1000);
+  client.publish(PUB_TOPIC.c_str(), payload);
 }
 
 
 void loop() {
-
   if (!client.connected()) {
     reconnect();
   }
-  client.loop();
+  client.loop(); 
 
-  long now = millis();
-  if (now - lastMsg > 5000) {
-    lastMsg = now;
-    //=============================================================================================    
-    //Json Serializer
-    float temperature = bmp.readTemperature();
-    float pressure = bmp.readPressure();
-    float light = analogRead(PIN_LDR);
-
-    
-    payload_out["mac_Id"] = mac_Id;
-    payload_out["device_Id"] = clientId;
-    payload_out["temp_C"] = serialized(String(temperature,2));
-    payload_out["press_hPa"] = serialized(String(pressure/100,2));
-    payload_out["ligh_adim"] = serialized(String(light,2));
-
-
-    serializeJson(payload_out, payload);
-        
-    Serial.print("Publicando mensaje: ");
-    Serial.println(payload);
-
-    client.publish(PUBLISH_TOPIC, payload);
-    payload_out.clear();
-    //================================================================================================
+  if(button_pressed){
+    desired_status["state"]["desired"]["status"] = relay_status;
+    char payload[BUFFER_LEN]; 
+    serializeJson(desired_status, payload);
+    client.publish(BUTTON_TOPIC, payload);
+    button_pressed = 0;    
   }
-                      
+                       
 }

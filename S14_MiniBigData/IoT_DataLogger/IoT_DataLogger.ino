@@ -23,7 +23,6 @@ const char* mqtt_server = AWS_MQTT_SERVER;
 const int mqtt_port = 8883;
 String clientId = "Axolote_";
 const char* PUBLISH_TOPIC = "embebed_cloud/Axolote/test_topic_pub";
-const char* SUBSCRIBE_TOPIC = "embebed_cloud/Axolote/test_topic_sub";
 
 String Read_rootca;
 String Read_cert;
@@ -35,10 +34,7 @@ char payload[BUFFER_LEN]; //Datos a enviar por MQTT
 byte mac[6];
 char mac_Id[18];
 
-#define JSON_BUFFER_INCOMING_LEN 200
-#define JSON_BUFFER_OUTGOING_LEN 200
-StaticJsonDocument<JSON_BUFFER_INCOMING_LEN> payload_in;
-StaticJsonDocument<JSON_BUFFER_OUTGOING_LEN> payload_out;
+StaticJsonDocument<200> payload_out;
 //********************************
 
 //Configuración de cliente MQTT
@@ -72,15 +68,6 @@ void setup_wifi() {
   Serial.println(WiFi.localIP());
 }
 
-//Callback
-void callback(char* topic, byte* payload, unsigned int length) {
-
-  //Json parser deserializer
-  deserializeJson(payload_in, payload);
-  const char* message = payload_in["message"];
-  Serial.println(message);
-  payload_in.clear();
-}
 
 //Conectar a broker MQTT
 void reconnect() {
@@ -91,11 +78,9 @@ void reconnect() {
 
     // Intentando conectarse
     if (client.connect(clientId.c_str())) {
-      Serial.println("conectada");      
+      Serial.println("conectada");   
    
-    // ... y suscribiendo
-      client.subscribe(SUBSCRIBE_TOPIC);
-      
+ 
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -182,7 +167,6 @@ void setup() {
   espClient.setPrivateKey(pRead_privatekey);
 
   client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
 
   //******************************************
   WiFi.macAddress(mac);
@@ -211,21 +195,22 @@ void loop() {
     float pressure = bmp.readPressure();
     float light = analogRead(PIN_LDR);
 
-    
-    payload_out["mac_Id"] = mac_Id;
-    payload_out["device_Id"] = clientId;
-    payload_out["temp_C"] = serialized(String(temperature,2));
-    payload_out["press_hPa"] = serialized(String(pressure/100,2));
-    payload_out["ligh_adim"] = serialized(String(light,2));
-
-
-    serializeJson(payload_out, payload);
-        
-    Serial.print("Publicando mensaje: ");
-    Serial.println(payload);
-
-    client.publish(PUBLISH_TOPIC, payload);
-    payload_out.clear();
+    digitalWrite(PIN_LED,HIGH);
+      payload_out["mac_Id"] = mac_Id;
+      payload_out["device_Id"] = clientId;
+      payload_out["temp_C"] = serialized(String(temperature,2));
+      payload_out["press_hPa"] = serialized(String(pressure/100,2));
+      payload_out["ligh_adim"] = serialized(String(light,2));
+  
+  
+      serializeJson(payload_out, payload);
+          
+      Serial.print("Publicando mensaje: ");
+      Serial.println(payload);
+  
+      client.publish(PUBLISH_TOPIC, payload);
+      payload_out.clear();
+    digitalWrite(PIN_LED,LOW);
     //================================================================================================
   }
                       
