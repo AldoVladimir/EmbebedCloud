@@ -5,3 +5,4 @@ S11_Boton_IoT/AWS_MQTT_Shadow_button/data/*
 S12_Relevador_IoT/relay_iot/data/*
 S8_9_MQTT/AWS_MQTT/data/*
 S14_MiniBigData/IoT_DataLogger/data/*
+S16_GPS_IoT/IoT_DataLogger_GPS/data/*
