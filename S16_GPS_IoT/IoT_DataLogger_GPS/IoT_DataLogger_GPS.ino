@@ -205,7 +205,12 @@ void loop() {
     float temperature = bmp.readTemperature();
     float pressure = bmp.readPressure();
     float light = analogRead(PIN_LDR);
-    gps.encode(Serial2.read()); //Codifica info de gps
+    double lat = gps.location.lat();
+    double lon = gps.location.lng();
+    
+    
+    while (Serial2.available() > 0)
+    if (gps.encode(Serial2.read())) //Codifica info de gps
     
     //2022-11-29 19:25:48.724000000 Formato que quiero
     sprintf(gps_date_time,
@@ -226,15 +231,15 @@ void loop() {
       payload_out["temp_C"] = serialized(String(temperature,2));
       payload_out["press_hPa"] = serialized(String(pressure/100,2));
       payload_out["ligh_adim"] = serialized(String(light,2));      
-      payload_out["lat_deg"] = serialized(String(gps.location.lat(),6));
-      payload_out["long_deg"] = serialized(String(gps.location.lng(),6));      
+      payload_out["lat_deg"] = serialized(String(lat,6));
+      payload_out["long_deg"] = serialized(String(lon,6));      
       
       serializeJson(payload_out, payload);
           
       Serial.print("Publicando mensaje: ");
       Serial.println(payload);
   
-      client.publish(PUBLISH_TOPIC, payload);
+      //client.publish(PUBLISH_TOPIC, payload);
       payload_out.clear();
     digitalWrite(PIN_LED,LOW);
     //================================================================================================
