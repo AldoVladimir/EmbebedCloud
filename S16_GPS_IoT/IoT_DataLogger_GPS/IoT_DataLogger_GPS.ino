@@ -29,7 +29,7 @@ String Read_rootca;
 String Read_cert;
 String Read_privatekey;
 //********************************
-#define BUFFER_LEN  256
+#define BUFFER_LEN 400
 long lastMsg = 0;
 char payload[BUFFER_LEN]; //Datos a enviar por MQTT
 byte mac[6];
