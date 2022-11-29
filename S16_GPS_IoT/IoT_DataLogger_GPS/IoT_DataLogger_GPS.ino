@@ -239,7 +239,7 @@ void loop() {
       Serial.print("Publicando mensaje: ");
       Serial.println(payload);
   
-      //client.publish(PUBLISH_TOPIC, payload);
+      client.publish(PUBLISH_TOPIC, payload);
       payload_out.clear();
     digitalWrite(PIN_LED,LOW);
     //================================================================================================
